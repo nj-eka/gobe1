@@ -1,0 +1,402 @@
+openapi: 3.0.3
+info:
+  title: E-Shop
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: E-Shop project running locally
+components:
+  # https://swagger.io/docs/specification/authentication/
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      name: X-API-Key
+      in: cookie #"header"
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        password:
+          type: string
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: integer # чтобы не потерять точность, денежные поля мы будем передавать
+          format: int64 # в виде целочисленного значения минимальной размерности валюты (например, центы или копейки)
+        image_link:
+          type: string
+    OrderItem:
+      type: object
+      properties:
+        itemId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          format: int64
+        price:
+          type: integer
+          format: int64
+    OrderItems:
+      type: array
+      items:
+        $ref: "#/components/schemas/OrderItem"
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        address:
+          type: string
+        items:
+          $ref: "#/components/schemas/OrderItems"
+        date:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: Status
+          enum:
+            - "open"
+            - "closed"
+paths:
+  /user/login:
+    post:
+      operationId: loginUser
+      parameters:
+        - name: username
+          in: query
+          description: The user name for login
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: The password for login in clear text
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          headers:
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid username/password supplied
+          content: {}
+  /user/logout:
+    post:
+      summary: Logs out current logged in user session
+      operationId: logoutUser
+      responses:
+        200:
+          description: successful logout
+          content: {}
+  /items:
+    get:
+      summary: Lists Items with filters
+      operationId: ListItems
+      parameters:
+        - name: price_min
+          in: query
+          description: Lower price limit
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: price_max
+          in: query
+          description: Upper price limit
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        400:
+          description: Invalid price range
+          content: {}
+    post:
+      summary: Add a new item to the store
+      operationId: "CreateItem"
+      requestBody:
+        description: Item object that needs to be added to the store
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Item'
+      responses:
+        "405":
+          description: "Invalid input"
+      security:
+        - ApiKeyAuth: []
+  /items/upload_image:
+    post:
+      summary: "uploads an image"
+      operationId: "uploadImage"
+      requestBody:
+        description: Item object that needs to be added to the store
+        required: true
+        content:
+#          application/x-www-form-urlencoded:  #      consumes: - "multipart/form-data"
+#            schema:
+#              type: object
+#              properties:
+#                additionalMetadata:
+#                  description: Additional data to pass to server
+#                  required: true
+#                  type: string
+#                file:
+#                  description: "file to upload"
+#                  required: true
+#                  type: file # Schema validation: Value should be one of: "array", "boolean", "integer", "null", "number", "object", "string" ...
+          multipart/mixed:
+            schema:
+              type: object
+              properties:
+                additionalMetadata:
+                  description: Additional data to pass to server
+                  type: string
+                image:
+                  # default is application/octet-stream, need to declare an image type only!
+                  type: string
+                  format: binary
+            encoding:
+              image:
+                # only accept png/jpeg
+                contentType: image/png, image/jpeg
+                headers:
+                  X-Rate-Limit-Limit:
+                    description: The number of allowed requests in the current period
+                    schema:
+                      type: integer
+      responses:
+        200:
+          description: successful operation
+      security:
+        - ApiKeyAuth: []
+  /items/{itemId}:
+    get:
+      summary: Find item by ID
+      operationId: GetItem
+      parameters:
+        - name: itemId
+          in: path
+          description: ID of item to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        400:
+          description: Invalid ID supplied
+          content: {}
+    put:
+      summary: Updates a item in the store with form data
+      operationId: UpdateItem
+      parameters:
+      - name: itemId
+        in: path
+        description: ID of item that needs to be updated
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  description: Updated name of the item
+                status:
+                  type: string
+                  description: Updated status of the item
+      responses:
+        405:
+          description: Invalid input
+          content: {}
+      security:
+        - ApiKeyAuth: []
+    delete:
+      summary: Deletes a item
+      operationId: DeleteItem
+      parameters:
+      - name: itemId
+        in: path
+        description: Item id to delete
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Item not found
+          content: {}
+      security:
+        - ApiKeyAuth: []
+  /orders:
+    get:
+      summary: Lists orders with filters
+      operationId: ListOrders
+      parameters:
+        - name: date_from
+          in: query
+          description: ordered since
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          description: ordered up to
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: status
+          in: query
+          description: orders with status
+          required: false
+          schema:
+            type: string
+            enum:
+              - "open"
+              - "closed"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        400:
+          description: Invalid params
+          content: {}
+    post:
+      summary: Add a new order to the store
+      operationId: "CreateOrder"
+      requestBody:
+        description: Order object that needs to be added to the store
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        "405":
+          description: "Invalid input"
+      security:
+        - ApiKeyAuth: []
+
+  /orders/{orderId}:
+    get:
+      summary: Find order by ID
+      operationId: GetOrder
+      parameters:
+        - name: orderId
+          in: path
+          description: ID of order to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        400:
+          description: Invalid ID supplied
+          content: {}
+    put:
+      summary: Updates a order in the store with form data
+      operationId: UpdateOrder
+      parameters:
+        - name: orderId
+          in: path
+          description: ID of order that needs to be updated
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                address:
+                  type: string
+                  description: Updated address of the order
+                items:
+                  $ref: "#/components/schemas/OrderItems"
+      responses:
+        405:
+          description: Invalid input
+          content: {}
+      security:
+        - ApiKeyAuth: []
+    delete:
+      summary: Deletes an order
+      operationId: DeleteOrder
+      parameters:
+        - name: orderId
+          in: path
+          description: Order id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Order not found
+          content: {}
+      security:
+        - ApiKeyAuth: []
