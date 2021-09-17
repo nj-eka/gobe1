@@ -1,0 +1,20 @@
+package config
+
+import (
+	"flag"
+	. "github.com/nj-eka/gobe1/env"
+	"time"
+)
+
+var (
+	Address   string
+	Protocol string
+	KeepAlive time.Duration
+)
+
+func init(){
+	flag.StringVar(&Address, "a", GetEnv("CHAT_ADDRESS", ":8000"), "address")
+	flag.StringVar(&Protocol, "p", GetEnv("CHAT_PROTOCOL", "tcp"), "protocol")
+	flag.DurationVar(&KeepAlive, "keepAlive", 1 * time.Minute, "keep alive duration")
+	flag.Parse()
+}
