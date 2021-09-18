@@ -216,7 +216,6 @@ func broadcaster() {
 					break
 				}
 				// no locks will occur in exclusive reading access to message channel (with writers doing their works)
-				//
 				msg = <- messages
 			}
 		}
