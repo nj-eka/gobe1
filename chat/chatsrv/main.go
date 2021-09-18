@@ -212,7 +212,7 @@ func broadcaster() {
 				for cli := range clients {
 					cli.ch <- msg
 				}
-				if len(messages) == 0{
+				if len(messages) == 0{ // for the first time I met here that len function came in handy on the channels )
 					break
 				}
 				msg = <- messages
