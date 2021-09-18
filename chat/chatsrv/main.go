@@ -207,7 +207,7 @@ func broadcaster() {
 			}
 			delete(clients, cli)
 			close(cli.ch)
-		case msg := <- messages:  // read out all messages
+		case msg := <- messages:  // read out all (almost)) messages
 			for {
 				for cli := range clients {
 					cli.ch <- msg
@@ -215,6 +215,8 @@ func broadcaster() {
 				if len(messages) == 0{ // for the first time I met here that len function came in handy on the channels )
 					break
 				}
+				// no locks will occur in exclusive reading access to message channel (with writers doing their works)
+				//
 				msg = <- messages
 			}
 		}
