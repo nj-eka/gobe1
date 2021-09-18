@@ -126,15 +126,15 @@ func handleConn(ctx context.Context, wg *sync.WaitGroup, conn net.Conn) {
 		return
 	}
 	// set color
-	if _, err := fmt.Fprintln(conn, "choose your color [1-7]:"); err != nil{
+	if _, err := fmt.Fprintln(conn, fmt.Sprintf("choose your color [1-%d]:", len(colors))); err != nil{
 		return
 	}
 	if input.Scan(){
 		if i, err := strconv.ParseInt(input.Text(), 0 , 0); err == nil{
-			if (i >= 0) && (i < int64(len(colors))) {
-				cli.ref.cs = colors[i]
+			if (i >= 1) && (i <= int64(len(colors))) {
+				cli.ref.cs = colors[i - 1]
 			}
-		}
+		} // or try again
 	} else {
 		return
 	}
